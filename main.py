@@ -2,15 +2,19 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from PIL import Image as PILImage
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from config import (
     IS_KAGGLE, DEVICE, NUM_CLASSES, CLASS_NAMES, CONFIG,
     DATA_DIR, WEIGHT_DIR, FIGURE_DIR,
+    NORMALIZE_MEAN, NORMALIZE_STD,
 )
 from utils.preprocess import build_dataloaders, cutmix_batch, cutmix_criterion
 from utils.helper import EarlyStopping
-from utils.visualize import compute_metrics, plot_confusion_matrix
+from utils.visualize import (
+    compute_metrics, plot_confusion_matrix, GradCAM, overlay_heatmap,
+)
 from models.resnet50 import get_resnet50
 from models.efficientnet_b0 import get_efficientnet_b0
 from models.mobilenetv3_base import get_mobilenetv3_base
@@ -98,6 +102,25 @@ def collect_predictions(model, loader):
     return y_true, y_pred
 
 
+def save_gradcam_examples(model, loader, n=4):
+    """对改进模型生成 n 张 Grad-CAM 叠加热力图并保存（需保留梯度）。"""
+    cam_engine = GradCAM(model, model.features[-1])
+    count = 0
+    for images, _ in loader:
+        for i in range(images.size(0)):
+            single = images[i:i + 1].to(DEVICE)
+            cam, _ = cam_engine.generate(single)
+            overlay = overlay_heatmap(
+                single, cam, NORMALIZE_MEAN, NORMALIZE_STD
+            )
+            PILImage.fromarray(overlay).save(
+                f"{FIGURE_DIR}/gradcam_{count}.png"
+            )
+            count += 1
+            if count >= n:
+                return
+
+
 def main():
     train_loader, val_loader, test_loader, folder_classes = \
         build_dataloaders(DATA_DIR, CONFIG["batch_size"])
@@ -119,6 +142,10 @@ def main():
             y_true, y_pred, CLASS_NAMES,
             f"{FIGURE_DIR}/{model_name}_confusion_matrix.png",
         )
+        if model_name == "mobilenetv3_se":
+            save_gradcam_examples(model, test_loader)
+            print(f"[{model_name}] 已生成 Grad-CAM 热力图")
+
         summary[model_name] = (best_val, metric)
         print(f"{model_name} 测试集指标：{metric}\n")
 

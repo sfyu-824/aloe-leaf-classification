@@ -17,7 +17,7 @@ SUGGESTION = {
     "幼年健康叶片": "幼苗健康，避免强光暴晒，做好日常养护。",
 }
 
-model = get_mobilenetetv3_se(NUM_CLASSES)
+model = get_mobilenetv3_se(NUM_CLASSES)
 model.load_state_dict(
     torch.load(f"{WEIGHT_DIR}/mobilenetv3_se.pth", map_location=DEVICE)
 )

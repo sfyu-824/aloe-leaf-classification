@@ -9,7 +9,15 @@ from models.mobilenetv3_se import get_mobilenetv3_se
 
 app = Flask(__name__)
 
-model = get_mobilenetv3_se(NUM_CLASSES)
+# 每个类别对应的基础养护 / 防治建议
+SUGGESTION = {
+    "病害叶片": "及时摘除病叶，加强通风降湿，必要时喷施对应杀菌剂。",
+    "干枯叶片": "多为生理性干枯，检查水肥与光照，移除干枯叶片。",
+    "成熟健康叶片": "叶片状态健康，维持现有水肥与光照管理。",
+    "幼年健康叶片": "幼苗健康，避免强光暴晒，做好日常养护。",
+}
+
+model = get_mobilenetetv3_se(NUM_CLASSES)
 model.load_state_dict(
     torch.load(f"{WEIGHT_DIR}/mobilenetv3_se.pth", map_location=DEVICE)
 )
@@ -33,7 +41,11 @@ def index():
         prob = torch.softmax(model(tensor), dim=1)
     conf, idx = torch.max(prob, dim=1)
     name = CLASS_NAMES[int(idx)]
-    return f"<h3>识别结果：{name}</h3><p>置信度：{float(conf):.4f}</p>"
+    return (
+        f"<h3>识别结果：{name}</h3>"
+        f"<p>置信度：{float(conf):.4f}</p>"
+        f"<p>防治建议：{SUGGESTION[name]}</p>"
+    )
 
 
 if __name__ == "__main__":

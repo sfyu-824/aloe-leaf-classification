@@ -1,12 +1,19 @@
-"""数据处理：数据集加载、基础增强、CutMix。"""
+"""数据处理：官方预划分数据集加载、基础增强、CutMix。"""
+import os
+
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from config import (
     IMAGE_SIZE, NORMALIZE_MEAN, NORMALIZE_STD, CONFIG,
 )
+
+# 数据集官方子目录名（集合在上、类别在下）
+TRAIN_DIR = "Training Set"
+VAL_DIR = "Validation Set"
+TEST_DIR = "Test Set"
 
 # 训练集基础增强
 train_transform = transforms.Compose([
@@ -28,26 +35,29 @@ eval_transform = transforms.Compose([
 
 
 def build_dataloaders(data_dir, batch_size=None):
-    """按 7:2:1 划分并返回训练/验证/测试 DataLoader 及类别名。"""
-    batch_size = batch_size or CONFIG["batch_size"]
-    full_set = datasets.ImageFolder(data_dir, transform=train_transform)
-    total = len(full_set)
-    r_train, r_val, _ = CONFIG["split_ratios"]
-    n_train = int(total * r_train)
-    n_val = int(total * r_val)
-    n_test = total - n_train - n_val
+    """读取官方预划分的 Training/Validation/Test Set，返回三个 DataLoader 及类别名。
 
-    train_set, val_set, test_set = random_split(
-        full_set, [n_train, n_val, n_test]
+    三个集合内部均为 4 个类别文件夹，ImageFolder 按字母序得到类别：
+    ['Disease', 'Dried', 'Mature Healthy', 'Young Healthy']，
+    与 config.CLASS_NAMES 的中文类别顺序一一对应。
+    """
+    batch_size = batch_size or CONFIG["batch_size"]
+
+    train_set = datasets.ImageFolder(
+        os.path.join(data_dir, TRAIN_DIR), transform=train_transform
     )
-    val_set.dataset.transform = eval_transform
-    test_set.dataset.transform = eval_transform
+    val_set = datasets.ImageFolder(
+        os.path.join(data_dir, VAL_DIR), transform=eval_transform
+    )
+    test_set = datasets.ImageFolder(
+        os.path.join(data_dir, TEST_DIR), transform=eval_transform
+    )
 
     return (
         DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2),
         DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=2),
         DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=2),
-        full_set.classes,
+        train_set.classes,
     )
 
 

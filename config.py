@@ -16,8 +16,13 @@ IS_KAGGLE = is_kaggle()
 
 # ---------- 路径配置 ----------
 if IS_KAGGLE:
-    DATA_DIR = "/kaggle/input/alvleaf"
     OUTPUT_DIR = "/kaggle/working/output"
+    # 优先使用项目内软链接 ./dataset（可指向任意实际数据集路径，
+    # 规避数据集目录名带空格或层级较深的问题）；不存在时回退默认挂载路径
+    if os.path.isdir("./dataset"):
+        DATA_DIR = "./dataset"
+    else:
+        DATA_DIR = "/kaggle/input/alvleaf"
 else:
     DATA_DIR = "./dataset"
     OUTPUT_DIR = "./output"

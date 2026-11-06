@@ -49,7 +49,7 @@ CONFIG = {
     "weight_decay": 1e-4,
     "label_smoothing": 0.1,
     "early_stop_patience": 8,
-    "use_cutmix": False,             # CutMix 作为对照实验，按需开启
+    "use_cutmix": True,              # CutMix 作为常规增强启用，与基础增强叠加
     "cutmix_alpha": 1.0,
     "split_ratios": (0.7, 0.2, 0.1),  # 训练/验证/测试
 }

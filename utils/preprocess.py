@@ -20,11 +20,15 @@ IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 SPLIT_SEED = 42  # 固定随机种子，保证每次划分结果一致、可复现
 
 # 训练集基础增强
+# 说明：RandomResizedCrop 同时完成随机缩放与随机位置裁剪，
+# 直接在 224 尺寸上再用同尺寸 RandomCrop 不会产生位置变化（等于空操作），
+# 故此处改用 RandomResizedCrop，使“随机裁剪”增强真正生效。
 train_transform = transforms.Compose([
-    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+    transforms.RandomResizedCrop(
+        (IMAGE_SIZE, IMAGE_SIZE), scale=(0.7, 1.0), ratio=(0.75, 1.333)
+    ),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomRotation(15),
-    transforms.RandomCrop((IMAGE_SIZE, IMAGE_SIZE), pad_if_needed=True),
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
     transforms.ToTensor(),
     transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD),

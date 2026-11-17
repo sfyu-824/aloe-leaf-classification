@@ -10,6 +10,7 @@ from torchvision import transforms
 
 from config import (
     IMAGE_SIZE, NORMALIZE_MEAN, NORMALIZE_STD, CONFIG, CLASS_DIRS,
+    DATASET_SUBDIR,
 )
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
@@ -55,10 +56,15 @@ class PathDataset(Dataset):
 
 
 def collect_by_class(data_dir):
-    """扫描 data_dir 下各类别子文件夹，返回 {类别名: [图片路径, ...]}。"""
+    """扫描 data_dir 下各类别子文件夹，返回 {类别名: [图片路径, ...]}。
+
+    类别文件夹默认位于 DATA_DIR/DATASET_SUBDIR 内（Mendeley 解压后为
+    final/ 与 final_Augmented/）；DATASET_SUBDIR 为空时直接扫描 DATA_DIR。
+    """
+    data_root = os.path.join(data_dir, DATASET_SUBDIR) if DATASET_SUBDIR else data_dir
     grouped = {c: [] for c in CLASS_DIRS}
     for c in CLASS_DIRS:
-        folder = os.path.join(data_dir, c)
+        folder = os.path.join(data_root, c)
         if not os.path.isdir(folder):
             continue
         for fn in os.listdir(folder):
@@ -83,7 +89,7 @@ def build_dataloaders(data_dir, batch_size=None):
     for label, c in enumerate(CLASS_DIRS):
         paths = grouped[c]
         if not paths:
-            print(f"[警告] 类别文件夹为空或未找到：{c}，请检查 DATA_DIR 与 CLASS_DIRS")
+            print(f"[警告] 类别文件夹为空或未找到：{c}，请检查 DATA_DIR、DATASET_SUBDIR 与 CLASS_DIRS")
         rng.shuffle(paths)
         n = len(paths)
         n_train = int(n * r_train)

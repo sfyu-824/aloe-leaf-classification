@@ -39,9 +39,16 @@ IMAGE_SIZE = 224
 # 芦荟叶病检测数据集（Mendeley Data, DOI:10.17632/7w6t4zx33n.1）
 # 五分类样本量：锈病 210 / 炭疽病 500 / 叶斑病 500 / 晒伤 510 / 健康 780
 # CLASS_DIRS 必须与解压后数据集内的实际文件夹名一致（若不一致只改这里）
-CLASS_DIRS = ["Aloe Rust", "Anthracnose", "Leaf Spot", "SunBurn", "Healthy"]
+CLASS_DIRS = ["Aloe Rust", "Anthracnose", "Leaf Spot", "Sunburn", "Healthy"]
 CLASS_NAMES = ["锈病", "炭疽病", "叶斑病", "晒伤", "健康叶片"]
 NUM_CLASSES = len(CLASS_NAMES)
+
+# 解压后根目录下还有 final/ 与 final_Augmented/ 两个子目录，类别文件夹位于子目录内部。
+# DATASET_SUBDIR 指定使用哪个子目录：
+#   "final"           原始 2500 张（论文实验基准，推荐）
+#   "final_Augmented" 已做增强的版本
+#   ""                类别文件夹直接位于 DATA_DIR 下（不使用子目录）
+DATASET_SUBDIR = "final"
 
 NORMALIZE_MEAN = [0.485, 0.456, 0.406]
 NORMALIZE_STD = [0.229, 0.224, 0.225]

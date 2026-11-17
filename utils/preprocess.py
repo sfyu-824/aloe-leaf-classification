@@ -1,21 +1,17 @@
-"""数据处理：汇总官方三个集合后按 7:2:1 分层划分、基础增强、CutMix。"""
+"""数据处理：按 7:2:1 分层划分、基础增强、CutMix 与类别不均衡采样。"""
 import os
 import random
 
 import numpy as np
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from torchvision import transforms
 
 from config import (
-    IMAGE_SIZE, NORMALIZE_MEAN, NORMALIZE_STD, CONFIG,
+    IMAGE_SIZE, NORMALIZE_MEAN, NORMALIZE_STD, CONFIG, CLASS_DIRS,
 )
 
-# 数据集官方目录结构（集合在上、类别在下）
-SET_DIRS = ["Training Set", "Validation Set", "Test Set"]
-# 类别按字母序，与 config.CLASS_NAMES 中文顺序一一对应
-CLASS_DIRS = ["Disease", "Dried", "Mature Healthy", "Young Healthy"]
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 SPLIT_SEED = 42  # 固定随机种子，保证每次划分结果一致、可复现
 
@@ -59,23 +55,23 @@ class PathDataset(Dataset):
 
 
 def collect_by_class(data_dir):
-    """汇总三个 Set 目录下的全部图片，返回 {类别名: [图片路径, ...]}。"""
+    """扫描 data_dir 下各类别子文件夹，返回 {类别名: [图片路径, ...]}。"""
     grouped = {c: [] for c in CLASS_DIRS}
-    for set_name in SET_DIRS:
-        for c in CLASS_DIRS:
-            folder = os.path.join(data_dir, set_name, c)
-            if not os.path.isdir(folder):
-                continue
-            for fn in os.listdir(folder):
-                if fn.lower().endswith(IMAGE_EXTS):
-                    grouped[c].append(os.path.join(folder, fn))
+    for c in CLASS_DIRS:
+        folder = os.path.join(data_dir, c)
+        if not os.path.isdir(folder):
+            continue
+        for fn in os.listdir(folder):
+            if fn.lower().endswith(IMAGE_EXTS):
+                grouped[c].append(os.path.join(folder, fn))
     return grouped
 
 
 def build_dataloaders(data_dir, batch_size=None):
     """汇总全部图片，在每个类别内按 7:2:1 分层随机划分（固定种子）。
 
-    返回训练/验证/测试 DataLoader 及类别名。函数签名与 main.py 保持兼容。
+    返回 (train_loader, val_loader, test_loader, class_names, class_counts)。
+    class_counts 为各类别训练样本数，供加权损失使用。
     """
     batch_size = batch_size or CONFIG["batch_size"]
     r_train, r_val, _ = CONFIG["split_ratios"]
@@ -83,8 +79,11 @@ def build_dataloaders(data_dir, batch_size=None):
 
     train_samples, val_samples, test_samples = [], [], []
     grouped = collect_by_class(data_dir)
+    class_counts = []
     for label, c in enumerate(CLASS_DIRS):
         paths = grouped[c]
+        if not paths:
+            print(f"[警告] 类别文件夹为空或未找到：{c}，请检查 DATA_DIR 与 CLASS_DIRS")
         rng.shuffle(paths)
         n = len(paths)
         n_train = int(n * r_train)
@@ -93,17 +92,40 @@ def build_dataloaders(data_dir, batch_size=None):
         train_samples += [(p, label) for p in paths[:n_train]]
         val_samples += [(p, label) for p in paths[n_train:n_train + n_val]]
         test_samples += [(p, label) for p in paths[n_train + n_val:]]
+        class_counts.append(n_train)
 
     rng.shuffle(train_samples)
     train_set = PathDataset(train_samples, train_transform)
     val_set = PathDataset(val_samples, eval_transform)
     test_set = PathDataset(test_samples, eval_transform)
 
+    train_loader = _build_train_loader(train_set, train_samples, batch_size)
+
     return (
-        DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2),
+        train_loader,
         DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=2),
         DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=2),
         CLASS_DIRS,
+        class_counts,
+    )
+
+
+def _build_train_loader(train_set, train_samples, batch_size):
+    """训练集加载器：开启类别过采样时使用 WeightedRandomSampler。"""
+    if not CONFIG["use_oversampling"]:
+        return DataLoader(
+            train_set, batch_size=batch_size, shuffle=True, num_workers=2
+        )
+
+    labels = [label for _, label in train_samples]
+    class_counts = [labels.count(i) for i in range(len(CLASS_DIRS))]
+    # 每样本权重 = 1 / 所属类别样本数，使小类被更高频采样
+    weights = [1.0 / max(class_counts[label], 1) for label in labels]
+    sampler = WeightedRandomSampler(
+        weights, num_samples=len(weights), replacement=True
+    )
+    return DataLoader(
+        train_set, batch_size=batch_size, sampler=sampler, num_workers=2
     )
 
 

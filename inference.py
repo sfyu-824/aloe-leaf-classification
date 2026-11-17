@@ -6,20 +6,20 @@ from PIL import Image
 
 from config import DEVICE, NUM_CLASSES, WEIGHT_DIR, CLASS_NAMES
 from utils.preprocess import eval_transform
-from models.mobilenetv3_se import get_mobilenetv3_se
+from models.mobilenetv3_cbam import get_mobilenetv3_cbam
 
 SUGGESTION = {
-    "病害叶片": "及时摘除病叶，加强通风降湿，必要时喷施对应杀菌剂。",
-    "干枯叶片": "多为生理性干枯，检查水肥与光照，移除干枯叶片。",
-    "成熟健康叶片": "叶片状态健康，维持现有水肥与光照管理。",
-    "幼年健康叶片": "幼苗健康，避免强光暴晒，做好日常养护。",
+    "锈病": "疑似锈病，及时摘除病叶并清理病残体，加强通风降湿，必要时喷施对应杀菌剂。",
+    "炭疽病": "疑似炭疽病，剪除病斑叶片，避免叶面长时间积水，喷施炭疽病防治药剂。",
+    "叶斑病": "疑似叶斑病，控制浇水与叶面湿度，及时清除病叶并喷施针对性杀菌剂。",
+    "晒伤": "疑似强光晒伤，适当遮阴或移至散射光环境，减少暴晒并补充适量水分。",
+    "健康叶片": "叶片状态健康，维持现有水肥与光照管理即可。",
 }
 
 
 def load_model(weight_path=None):
-    weight_path = weight_path or \
-        f"{WEIGHT_DIR}/mobilenetv3_se.pth"
-    model = get_mobilenetv3_se(NUM_CLASSES)
+    weight_path = weight_path or f"{WEIGHT_DIR}/mobilenetv3_cbam.pth"
+    model = get_mobilenetv3_cbam(NUM_CLASSES)
     model.load_state_dict(
         torch.load(weight_path, map_location=DEVICE)
     )

@@ -1,4 +1,4 @@
-"""训练主入口：3 条基线 + 1 条改进模型，并在测试集评估。"""
+"""训练主入口：3 条基线 + CBAM 改进模型，可选 SE/SAM 消融实验。"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,22 +18,37 @@ from utils.visualize import (
 from models.resnet50 import get_resnet50
 from models.efficientnet_b0 import get_efficientnet_b0
 from models.mobilenetv3_base import get_mobilenetv3_base
-from models.mobilenetv3_se import get_mobilenetv3_se
+from models.mobilenetv3_cbam import (
+    get_mobilenetv3_cbam, get_mobilenetv3_se, get_mobilenetv3_sam,
+)
 
-# 模型清单：名称 -> 构造函数
+# 主对比：3 基线 + 1 改进
 MODEL_LIST = [
     ("resnet50", get_resnet50),
     ("efficientnet_b0", get_efficientnet_b0),
     ("mobilenetv3_base", get_mobilenetv3_base),
+    ("mobilenetv3_cbam", get_mobilenetv3_cbam),
+]
+
+# 消融实验：注意力变体（基线复用 mobilenetv3_base）
+ABLATION_LIST = [
     ("mobilenetv3_se", get_mobilenetv3_se),
+    ("mobilenetv3_sam", get_mobilenetv3_sam),
 ]
 
 
-def run_training(model, model_name, train_loader, val_loader):
+def make_criterion(class_counts):
+    """类别不均衡时，按各类别训练样本数反比构造加权交叉熵。"""
+    kwargs = {"label_smoothing": CONFIG["label_smoothing"]}
+    if CONFIG["use_weighted_loss"] and class_counts is not None:
+        total = sum(class_counts)
+        weight = [total / (NUM_CLASSES * max(c, 1)) for c in class_counts]
+        kwargs["weight"] = torch.tensor(weight, dtype=torch.float32, device=DEVICE)
+    return nn.CrossEntropyLoss(**kwargs)
+
+
+def run_training(model, model_name, train_loader, val_loader, criterion):
     model = model.to(DEVICE)
-    criterion = nn.CrossEntropyLoss(
-        label_smoothing=CONFIG["label_smoothing"]
-    )
     optimizer = optim.AdamW(
         model.parameters(), lr=CONFIG["learning_rate"],
         weight_decay=CONFIG["weight_decay"],
@@ -103,7 +118,7 @@ def collect_predictions(model, loader):
 
 
 def save_gradcam_examples(model, loader, n=4):
-    """对改进模型生成 n 张 Grad-CAM 叠加热力图并保存（需保留梯度）。"""
+    """对改进模型生成 n 张 Grad-CAM 叠加热力图并保存。"""
     cam_engine = GradCAM(model, model.features[-1])
     count = 0
     for images, _ in loader:
@@ -121,37 +136,49 @@ def save_gradcam_examples(model, loader, n=4):
                 return
 
 
+def evaluate_and_summarize(model, model_name, test_loader, summary,
+                           save_gradcam=False):
+    y_true, y_pred = collect_predictions(model, test_loader)
+    metric = compute_metrics(y_true, y_pred)
+    plot_confusion_matrix(
+        y_true, y_pred, CLASS_NAMES,
+        f"{FIGURE_DIR}/{model_name}_confusion_matrix.png",
+    )
+    if save_gradcam:
+        save_gradcam_examples(model, test_loader)
+        print(f"[{model_name}] 已生成 Grad-CAM 热力图")
+    summary[model_name] = metric
+    print(f"{model_name} 测试集指标：{metric}\n")
+
+
 def main():
-    train_loader, val_loader, test_loader, folder_classes = \
+    train_loader, val_loader, test_loader, class_dirs, class_counts = \
         build_dataloaders(DATA_DIR, CONFIG["batch_size"])
-    print(f"数据目录类别：{folder_classes}")
+    print(f"数据目录类别：{class_dirs}")
+    print(f"各类别训练样本数：{class_counts}")
     print(f"设备：{DEVICE} | Kaggle：{IS_KAGGLE}")
 
+    criterion = make_criterion(class_counts)
     summary = {}
-    for model_name, builder in MODEL_LIST:
+
+    run_list = MODEL_LIST + (ABLATION_LIST if CONFIG["run_ablation"] else [])
+    for model_name, builder in run_list:
         model = builder(NUM_CLASSES)
         weight_path, best_val = run_training(
-            model, model_name, train_loader, val_loader
+            model, model_name, train_loader, val_loader, criterion
         )
         model.load_state_dict(
             torch.load(weight_path, map_location=DEVICE)
         )
-        y_true, y_pred = collect_predictions(model, test_loader)
-        metric = compute_metrics(y_true, y_pred)
-        plot_confusion_matrix(
-            y_true, y_pred, CLASS_NAMES,
-            f"{FIGURE_DIR}/{model_name}_confusion_matrix.png",
+        evaluate_and_summarize(
+            model, model_name, test_loader, summary,
+            save_gradcam=(model_name == "mobilenetv3_cbam"),
         )
-        if model_name == "mobilenetv3_se":
-            save_gradcam_examples(model, test_loader)
-            print(f"[{model_name}] 已生成 Grad-CAM 热力图")
-
-        summary[model_name] = (best_val, metric)
-        print(f"{model_name} 测试集指标：{metric}\n")
+        summary[model_name]["val_acc"] = best_val
 
     print("================ 结果汇总 ================")
-    for name, (best_val, metric) in summary.items():
-        print(f"{name:18s} 验证Acc {best_val:.4f} | "
+    for name, metric in summary.items():
+        print(f"{name:20s} 验证Acc {metric['val_acc']:.4f} | "
               f"测试Acc {metric['accuracy']:.4f} | "
               f"Macro-F1 {metric['macro_f1']:.4f}")
 

@@ -17,8 +17,6 @@ IS_KAGGLE = is_kaggle()
 # ---------- 路径配置 ----------
 if IS_KAGGLE:
     OUTPUT_DIR = "/kaggle/working/output"
-    # 优先使用项目内软链接 ./dataset（可指向任意实际数据集路径，
-    # 规避数据集目录名带空格或层级较深的问题）；不存在时回退默认挂载路径
     if os.path.isdir("./dataset"):
         DATA_DIR = "./dataset"
     else:
@@ -36,18 +34,10 @@ for _d in (WEIGHT_DIR, FIGURE_DIR, LOG_DIR):
 # ---------- 数据与类别 ----------
 IMAGE_SIZE = 224
 
-# 芦荟叶病检测数据集（Mendeley Data, DOI:10.17632/7w6t4zx33n.1）
-# 五分类样本量：锈病 210 / 炭疽病 500 / 叶斑病 500 / 晒伤 510 / 健康 780
-# CLASS_DIRS 必须与解压后数据集内的实际文件夹名一致（若不一致只改这里）
 CLASS_DIRS = ["Aloe Rust", "Anthracnose", "Leaf Spot", "Sunburn", "Healthy"]
 CLASS_NAMES = ["锈病", "炭疽病", "叶斑病", "晒伤", "健康叶片"]
 NUM_CLASSES = len(CLASS_NAMES)
 
-# 解压后根目录下还有 final/ 与 final_Augmented/ 两个子目录，类别文件夹位于子目录内部。
-# DATASET_SUBDIR 指定使用哪个子目录：
-#   "final"           原始 2500 张（论文实验基准，推荐）
-#   "final_Augmented" 已做增强的版本
-#   ""                类别文件夹直接位于 DATA_DIR 下（不使用子目录）
 DATASET_SUBDIR = "final"
 
 NORMALIZE_MEAN = [0.485, 0.456, 0.406]
@@ -57,17 +47,16 @@ NORMALIZE_STD = [0.229, 0.224, 0.225]
 CONFIG = {
     "batch_size": 16,
     "epochs": 50,
-    "learning_rate": 1e-4,
-    "weight_decay": 1e-4,
-    "label_smoothing": 0.1,
+    "learning_rate": 5e-5,
+    "weight_decay": 3e-4,
+    "label_smoothing": 0.15,
     "early_stop_patience": 8,
-    # CutMix 作为常规增强启用，与基础增强叠加
+    "warmup_epochs": 5,
     "use_cutmix": True,
-    "cutmix_alpha": 1.0,
-    # 类别不均衡处理：加权交叉熵 + 训练集过采样
+    "cutmix_alpha": 0.7,
     "use_weighted_loss": True,
     "use_oversampling": True,
-    "split_ratios": (0.7, 0.2, 0.1),  # 训练/验证/测试
+    "split_ratios": (0.7, 0.2, 0.1),
 }
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

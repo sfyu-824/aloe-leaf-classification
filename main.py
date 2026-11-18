@@ -41,8 +41,18 @@ def make_criterion(class_counts):
 
 def run_training(model, model_name, train_loader, val_loader, criterion):
     model = model.to(DEVICE)
+    warmup_epochs = CONFIG.get("warmup_epochs", 0)
+    freeze_backbone = warmup_epochs > 0 and model_name == "mobilenetv3_eca"
+
+    if freeze_backbone:
+        for name, param in model.named_parameters():
+            if "attn" not in name and "classifier" not in name:
+                param.requires_grad = False
+        print(f"[{model_name}] 前 {warmup_epochs} 轮冻结主干，只训练注意力与分类头")
+
+    trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.AdamW(
-        model.parameters(), lr=CONFIG["learning_rate"],
+        trainable, lr=CONFIG["learning_rate"],
         weight_decay=CONFIG["weight_decay"],
     )
     scheduler = CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"])
@@ -52,6 +62,16 @@ def run_training(model, model_name, train_loader, val_loader, criterion):
     best_val = 0.0
 
     for epoch in range(CONFIG["epochs"]):
+        if freeze_backbone and epoch == warmup_epochs:
+            for param in model.parameters():
+                param.requires_grad = True
+            optimizer = optim.AdamW(
+                model.parameters(), lr=CONFIG["learning_rate"],
+                weight_decay=CONFIG["weight_decay"],
+            )
+            scheduler = CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"])
+            print(f"[{model_name}] 预热结束，解冻全部参数进行全量微调")
+
         model.train()
         loss_sum = 0.0
         for images, labels in train_loader:

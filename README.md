@@ -3,7 +3,7 @@
 针对芦荟叶病检测数据集（Aloe Vera Leaf Disease Detection Dataset，Mendeley Data，
 DOI:10.17632/7w6t4zx33n.1），完成芦荟叶片 **锈病 / 炭疽病 / 叶斑病 / 晒伤 / 健康** 五分类。
 以 ResNet-50、EfficientNet-B0、原生 MobileNetV3-Small 为 3 条基线，
-提出在中层逆残差块后嵌入 **CBAM 混合注意力（通道 + 空间）** 的改进模型，
+提出在特征提取末端（全局平均池化前）嵌入 **CBAM 混合注意力（通道 + 空间）** 的改进模型，
 并针对类别不均衡问题引入 **加权交叉熵 + 小类过采样**，同时保留 CutMix 增强，
 最终提供 Flask 演示原型。
 

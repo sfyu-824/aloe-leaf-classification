@@ -6,7 +6,7 @@ from PIL import Image
 
 from config import DEVICE, NUM_CLASSES, WEIGHT_DIR, CLASS_NAMES
 from utils.preprocess import eval_transform
-from models.mobilenetv3_cbam import get_mobilenetv3_cbam
+from models.mobilenetv3_eca import get_mobilenetv3_eca
 
 SUGGESTION = {
     "锈病": "疑似锈病，及时摘除病叶并清理病残体，加强通风降湿，必要时喷施对应杀菌剂。",
@@ -18,8 +18,8 @@ SUGGESTION = {
 
 
 def load_model(weight_path=None):
-    weight_path = weight_path or f"{WEIGHT_DIR}/mobilenetv3_cbam.pth"
-    model = get_mobilenetv3_cbam(NUM_CLASSES)
+    weight_path = weight_path or f"{WEIGHT_DIR}/mobilenetv3_eca.pth"
+    model = get_mobilenetv3_eca(NUM_CLASSES)
     model.load_state_dict(
         torch.load(weight_path, map_location=DEVICE)
     )

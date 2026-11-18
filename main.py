@@ -1,4 +1,4 @@
-"""训练主入口：3 条基线 + CBAM 改进模型。"""
+"""训练主入口：3 条基线 + ECA 改进模型。"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,14 +18,14 @@ from utils.visualize import (
 from models.resnet50 import get_resnet50
 from models.efficientnet_b0 import get_efficientnet_b0
 from models.mobilenetv3_base import get_mobilenetv3_base
-from models.mobilenetv3_cbam import get_mobilenetv3_cbam
+from models.mobilenetv3_eca import get_mobilenetv3_eca
 
 # 模型清单：3 基线 + 1 改进
 MODEL_LIST = [
     ("resnet50", get_resnet50),
     ("efficientnet_b0", get_efficientnet_b0),
     ("mobilenetv3_base", get_mobilenetv3_base),
-    ("mobilenetv3_cbam", get_mobilenetv3_cbam),
+    ("mobilenetv3_eca", get_mobilenetv3_eca),
 ]
 
 
@@ -163,7 +163,7 @@ def main():
         )
         evaluate_and_summarize(
             model, model_name, test_loader, summary,
-            save_gradcam=(model_name == "mobilenetv3_cbam"),
+            save_gradcam=(model_name == "mobilenetv3_eca"),
         )
         summary[model_name]["val_acc"] = best_val
 

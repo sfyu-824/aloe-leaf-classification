@@ -1,56 +1,31 @@
-"""注意力模块：SE 通道注意力、SAM 空间注意力与 CBAM 混合注意力。
+"""注意力模块：ECA 高效通道注意力。"""
+import math
 
-说明：SEBlock（通道注意力）与 SAMBlock（空间注意力）是 CBAM 的两个组成分支，
-CBAM = SEBlock + SAMBlock，二者不可删除。
-"""
 import torch
 import torch.nn as nn
 
 
-class SEBlock(nn.Module):
-    """Squeeze-and-Excitation 通道注意力（CBAM 的通道分支）。"""
+class ECA(nn.Module):
+    """ECA-Net 高效通道注意力（Efficient Channel Attention）。
 
-    def __init__(self, channels, reduction=16):
+    通过一维卷积实现局部跨通道信息交互，全程不降维，仅引入极少量参数，
+    适配轻量化网络与小样本场景。
+    """
+
+    def __init__(self, channels, gamma=2, b=1):
         super().__init__()
-        reduced = max(channels // reduction, 1)
-        self.fc = nn.Sequential(
-            nn.Linear(channels, reduced, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(reduced, channels, bias=False),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        weight = self.fc(x.mean(dim=(2, 3))).view(b, c, 1, 1)
-        return x * weight
-
-
-class SAMBlock(nn.Module):
-    """Spatial Attention Module 空间注意力（CBAM 的空间分支）。"""
-
-    def __init__(self, kernel_size=7):
-        super().__init__()
-        padding = kernel_size // 2
-        self.conv = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+        # 自适应卷积核大小：k = |log2(C)/gamma + b/gamma| 的最近奇数
+        t = int(abs((math.log2(channels) + b) / gamma))
+        k = t if t % 2 else t + 1
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=k // 2, bias=False)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        avg_out = x.mean(dim=1, keepdim=True)
-        max_out = x.max(dim=1, keepdim=True)[0]
-        weight = self.sigmoid(self.conv(torch.cat([avg_out, max_out], dim=1)))
-        return x * weight
-
-
-class CBAM(nn.Module):
-    """CBAM 混合注意力：先通道后空间。"""
-
-    def __init__(self, channels, reduction=16, kernel_size=7):
-        super().__init__()
-        self.channel_attn = SEBlock(channels, reduction)
-        self.spatial_attn = SAMBlock(kernel_size)
-
-    def forward(self, x):
-        x = self.channel_attn(x)
-        x = self.spatial_attn(x)
-        return x
+        b, c, h, w = x.size()
+        y = self.avg_pool(x)                    # (b, c, 1, 1)
+        y = y.squeeze(-1).transpose(-1, -2)     # (b, 1, c)
+        y = self.conv(y)                        # (b, 1, c)
+        y = y.transpose(-1, -2).unsqueeze(-1)   # (b, c, 1, 1)
+        y = self.sigmoid(y)
+        return x * y

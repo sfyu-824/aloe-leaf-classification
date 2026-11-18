@@ -5,7 +5,7 @@ from PIL import Image
 
 from config import DEVICE, NUM_CLASSES, WEIGHT_DIR, CLASS_NAMES
 from utils.preprocess import eval_transform
-from models.mobilenetv3_cbam import get_mobilenetv3_cbam
+from models.mobilenetv3_eca import get_mobilenetv3_eca
 
 app = Flask(__name__)
 
@@ -17,9 +17,9 @@ SUGGESTION = {
     "健康叶片": "叶片状态健康，维持现有水肥与光照管理即可。",
 }
 
-model = get_mobilenetv3_cbam(NUM_CLASSES)
+model = get_mobilenetv3_eca(NUM_CLASSES)
 model.load_state_dict(
-    torch.load(f"{WEIGHT_DIR}/mobilenetv3_cbam.pth", map_location=DEVICE)
+    torch.load(f"{WEIGHT_DIR}/mobilenetv3_eca.pth", map_location=DEVICE)
 )
 model.to(DEVICE).eval()
 

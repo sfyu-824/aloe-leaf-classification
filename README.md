@@ -3,7 +3,7 @@
 针对芦荟叶病检测数据集（Aloe Vera Leaf Disease Detection Dataset，Mendeley Data，
 DOI:10.17632/7w6t4zx33n.1），完成芦荟叶片 **锈病 / 炭疽病 / 叶斑病 / 晒伤 / 健康** 五分类。
 以 ResNet-50、EfficientNet-B0、原生 MobileNetV3-Small 为 3 条基线，
-提出在特征提取末端（全局平均池化前）嵌入 **CBAM 混合注意力（通道 + 空间）** 的改进模型，
+提出在特征提取末端（全局平均池化前）嵌入 **ECA 高效通道注意力** 的改进模型，
 并针对类别不均衡问题引入 **加权交叉熵 + 小类过采样**，同时保留 CutMix 增强，
 最终提供 Flask 演示原型。
 
@@ -39,8 +39,8 @@ aloe-leaf-classification/
 │   ├── resnet50.py            # 基线 1
 │   ├── efficientnet_b0.py     # 基线 2
 │   ├── mobilenetv3_base.py    # 基线 3：原生 MobileNetV3-Small
-│   ├── attention.py           # CBAM 注意力模块（含通道/空间两个分支）
-│   └── mobilenetv3_cbam.py    # 本文改进：MobileNetV3-Small + CBAM
+│   ├── attention.py           # ECA 高效通道注意力模块
+│   └── mobilenetv3_eca.py     # 本文改进：MobileNetV3-Small + ECA
 ├── utils/
 │   ├── __init__.py
 │   ├── helper.py              # 早停
@@ -84,7 +84,7 @@ python app.py
 | 基线 1 | ResNet-50 |
 | 基线 2 | EfficientNet-B0 |
 | 基线 3 | 原生 MobileNetV3-Small |
-| 本文改进 | MobileNetV3-Small + CBAM 混合注意力 |
+| 本文改进 | MobileNetV3-Small + ECA 高效通道注意力 |
 
 **类别不均衡处理**（`config.CONFIG["use_weighted_loss"]` /
 `use_oversampling` 控制，默认开启）：加权交叉熵 + WeightedRandomSampler 过采样。

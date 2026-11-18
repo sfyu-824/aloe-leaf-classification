@@ -1,4 +1,4 @@
-"""训练主入口：3 条基线 + CBAM 改进模型，可选 SE/SAM 消融实验。"""
+"""训练主入口：3 条基线 + CBAM 改进模型。"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,22 +18,14 @@ from utils.visualize import (
 from models.resnet50 import get_resnet50
 from models.efficientnet_b0 import get_efficientnet_b0
 from models.mobilenetv3_base import get_mobilenetv3_base
-from models.mobilenetv3_cbam import (
-    get_mobilenetv3_cbam, get_mobilenetv3_se, get_mobilenetv3_sam,
-)
+from models.mobilenetv3_cbam import get_mobilenetv3_cbam
 
-# 主对比：3 基线 + 1 改进
+# 模型清单：3 基线 + 1 改进
 MODEL_LIST = [
     ("resnet50", get_resnet50),
     ("efficientnet_b0", get_efficientnet_b0),
     ("mobilenetv3_base", get_mobilenetv3_base),
     ("mobilenetv3_cbam", get_mobilenetv3_cbam),
-]
-
-# 消融实验：注意力变体（基线复用 mobilenetv3_base）
-ABLATION_LIST = [
-    ("mobilenetv3_se", get_mobilenetv3_se),
-    ("mobilenetv3_sam", get_mobilenetv3_sam),
 ]
 
 
@@ -161,8 +153,7 @@ def main():
     criterion = make_criterion(class_counts)
     summary = {}
 
-    run_list = MODEL_LIST + (ABLATION_LIST if CONFIG["run_ablation"] else [])
-    for model_name, builder in run_list:
+    for model_name, builder in MODEL_LIST:
         model = builder(NUM_CLASSES)
         weight_path, best_val = run_training(
             model, model_name, train_loader, val_loader, criterion

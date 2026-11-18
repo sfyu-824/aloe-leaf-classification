@@ -39,8 +39,8 @@ aloe-leaf-classification/
 │   ├── resnet50.py            # 基线 1
 │   ├── efficientnet_b0.py     # 基线 2
 │   ├── mobilenetv3_base.py    # 基线 3：原生 MobileNetV3-Small
-│   ├── attention.py           # SE / SAM / CBAM 注意力模块
-│   └── mobilenetv3_cbam.py    # 本文改进：MobileNetV3-Small + CBAM（含消融变体）
+│   ├── attention.py           # CBAM 注意力模块（含通道/空间两个分支）
+│   └── mobilenetv3_cbam.py    # 本文改进：MobileNetV3-Small + CBAM
 ├── utils/
 │   ├── __init__.py
 │   ├── helper.py              # 早停
@@ -85,11 +85,6 @@ python app.py
 | 基线 2 | EfficientNet-B0 |
 | 基线 3 | 原生 MobileNetV3-Small |
 | 本文改进 | MobileNetV3-Small + CBAM 混合注意力 |
-
-**消融实验**（`config.CONFIG["run_ablation"]` 控制，默认开启）：
-- `mobilenetv3_se`：仅 SE 通道注意力
-- `mobilenetv3_sam`：仅 SAM 空间注意力
-- `mobilenetv3_cbam`：完整 CBAM（通道 + 空间）
 
 **类别不均衡处理**（`config.CONFIG["use_weighted_loss"]` /
 `use_oversampling` 控制，默认开启）：加权交叉熵 + WeightedRandomSampler 过采样。

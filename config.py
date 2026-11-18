@@ -67,8 +67,6 @@ CONFIG = {
     # 类别不均衡处理：加权交叉熵 + 训练集过采样
     "use_weighted_loss": True,
     "use_oversampling": True,
-    # 是否额外跑 SE/SAM 消融实验（在 3 基线 + CBAM 之外追加）
-    "run_ablation": True,
     "split_ratios": (0.7, 0.2, 0.1),  # 训练/验证/测试
 }
 

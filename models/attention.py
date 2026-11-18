@@ -1,10 +1,14 @@
-"""注意力模块：SE 通道注意力、SAM 空间注意力与 CBAM 混合注意力。"""
+"""注意力模块：SE 通道注意力、SAM 空间注意力与 CBAM 混合注意力。
+
+说明：SEBlock（通道注意力）与 SAMBlock（空间注意力）是 CBAM 的两个组成分支，
+CBAM = SEBlock + SAMBlock，二者不可删除。
+"""
 import torch
 import torch.nn as nn
 
 
 class SEBlock(nn.Module):
-    """Squeeze-and-Excitation 通道注意力。"""
+    """Squeeze-and-Excitation 通道注意力（CBAM 的通道分支）。"""
 
     def __init__(self, channels, reduction=16):
         super().__init__()
@@ -23,7 +27,7 @@ class SEBlock(nn.Module):
 
 
 class SAMBlock(nn.Module):
-    """Spatial Attention Module 空间注意力。"""
+    """Spatial Attention Module 空间注意力（CBAM 的空间分支）。"""
 
     def __init__(self, kernel_size=7):
         super().__init__()
@@ -50,15 +54,3 @@ class CBAM(nn.Module):
         x = self.channel_attn(x)
         x = self.spatial_attn(x)
         return x
-
-
-def build_attention(name, channels):
-    """按名称构建注意力模块，供改进模型与消融实验复用。"""
-    name = name.lower()
-    if name == "se":
-        return SEBlock(channels)
-    if name == "sam":
-        return SAMBlock()
-    if name == "cbam":
-        return CBAM(channels)
-    raise ValueError(f"不支持的注意力类型：{name}")

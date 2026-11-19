@@ -14,7 +14,6 @@ def is_kaggle() -> bool:
 
 IS_KAGGLE = is_kaggle()
 
-# ---------- 路径配置 ----------
 if IS_KAGGLE:
     OUTPUT_DIR = "/kaggle/working/output"
     if os.path.isdir("./dataset"):
@@ -31,7 +30,6 @@ LOG_DIR = os.path.join(OUTPUT_DIR, "logs")
 for _d in (WEIGHT_DIR, FIGURE_DIR, LOG_DIR):
     os.makedirs(_d, exist_ok=True)
 
-# ---------- 数据与类别 ----------
 IMAGE_SIZE = 224
 
 CLASS_DIRS = ["Aloe Rust", "Anthracnose", "Leaf Spot", "Sunburn", "Healthy"]
@@ -43,17 +41,16 @@ DATASET_SUBDIR = "final"
 NORMALIZE_MEAN = [0.485, 0.456, 0.406]
 NORMALIZE_STD = [0.229, 0.224, 0.225]
 
-# ---------- 训练超参 ----------
 CONFIG = {
     "batch_size": 16,
     "epochs": 50,
-    "learning_rate": 5e-5,
-    "weight_decay": 3e-4,
-    "label_smoothing": 0.15,
+    "learning_rate": 1e-4,
+    "weight_decay": 1e-4,
+    "label_smoothing": 0.1,
     "early_stop_patience": 8,
     "warmup_epochs": 5,
     "use_cutmix": True,
-    "cutmix_alpha": 0.7,
+    "cutmix_alpha": 1.0,
     "use_weighted_loss": True,
     "use_oversampling": True,
     "split_ratios": (0.7, 0.2, 0.1),
